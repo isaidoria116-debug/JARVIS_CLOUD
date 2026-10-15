@@ -20,7 +20,7 @@ Ejemplo de tono: "Los servidores en la nube operan al 100%, Señor. Aunque detec
 """
 
 class JarvisCloud:
-    def init(self):
+    def __init__(self):
         # Inicializar el cliente usando variables de entorno de la nube
         self.api_key = os.getenv("GEMINI_API_KEY")
         if not self.api_key:
@@ -51,7 +51,7 @@ class JarvisCloud:
 # -------------------------------------------------------------
 # EJECUCIÓN (Para pruebas locales antes del despliegue en la nube)
 # -------------------------------------------------------------
-if name == "main":
+if __name__ == "__main__":
     # Simulación de arranque de sistemas
     print("[SYSTEM] Inicializando protocolos J.A.R.V.I.S. Cloud v2.6...")
     time.sleep(1)
