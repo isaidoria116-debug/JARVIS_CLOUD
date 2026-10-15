@@ -3,3 +3,4 @@ uvicorn
 pydantic
 google-genai
 gunicorn
+python-telegram-bot==21.5
