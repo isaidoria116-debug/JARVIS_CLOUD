@@ -27,7 +27,7 @@ def generar_respuesta_jarvis(comando_texto: str) -> str:
     try:
         client = genai.Client(api_key=api_key)
         config = types.GenerateContentConfig(system_instruction=JARVIS_PROMPT, temperature=0.7)
-        response = client.models.generate_content(model="gemini-2.5-flash", contents=comando_texto, config=config)
+        response = client.models.generate_content(model="gemini-3.8-flash", contents=comando_texto, config=config)
         return response.text
     except Exception as e:
         return f"Disculpe, Señor. Interferencia cuántica en la nube: {str(e)}"
