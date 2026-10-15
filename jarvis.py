@@ -55,7 +55,7 @@ async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
 @app.on_event("startup")
 async def iniciar_bot_telegram():
-    token_telegram = os.getenv("TELEGRAM_TOKEN")
+    token_telegram = "8837254965:AAEMzgOybDw7nV_O9otKjloEoOO-mnTI5-g" 
     if token_telegram:
         # Inicializa la aplicación del bot de fondo sin bloquear el servidor web
         tg_app = Application.builder().token(token_telegram).build()
