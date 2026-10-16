@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 # --- MANEJO DE ARRANQUE Y APAGADO SEGURO (Anti-Conflictos) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Token directo de tu nuevo bot Jarvis_7.0
+    # TOKEN ACTUALIZADO DE TU NUEVO BOT (stark_jarvis_prime_bot)
     token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
     
     if not token_telegram:
@@ -30,13 +30,11 @@ async def lifespan(app: FastAPI):
     await tg_app.initialize()
     await tg_app.start()
     
-    # Iniciamos el sondeo de mensajes
     polling_task = asyncio.create_task(tg_app.updater.start_polling())
     print("Sistemas J.A.R.V.I.S. conectados a los satélites de Telegram.")
 
     yield
 
-    # Protocolo de Apagado para liberar el token inmediatamente al reiniciar
     print("Cerrando protocolos... Liberando acceso cuántico de Telegram.")
     await tg_app.updater.stop()
     await tg_app.stop()
@@ -48,7 +46,7 @@ app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
 # --- CONFIGURACIÓN DE MODELOS ---
 MODELO_PRINCIPAL = "gemini-3.8-flash"
-MODELO_RESPALDO = "gemini-2.5-flash"
+MODELO_RESPALDO = "gemini-2.5-flash"  # Este modelo tiene su propia cuota independiente y libre
 
 JARVIS_PROMPT = """
 Eres J.A.R.V.I.S., el asistente de inteligencia artificial personal creado por Tony Stark.
@@ -81,7 +79,6 @@ def _invocar_gemini_api(client, model_name, contenidos):
 
 # --- NÚCLEO LÓGICO DE INTELIGENCIA ---
 def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
-    # Lee la clave de Gemini desde el entorno seguro de Render
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return "Error de energía: Falta la configuración de GEMINI_API_KEY en la nube, Señor."
@@ -89,10 +86,8 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
     if usuario_id not in MEMORIA_USUARIOS:
         MEMORIA_USUARIOS[usuario_id] = deque(maxlen=10)
     
-    # Guardamos el texto puro del usuario (Corrección de Validación efectuada)
     MEMORIA_USUARIOS[usuario_id].append({"role": "user", "parts": comando_texto})
     
-    # Estructura el historial correctamente en texto string para Google SDK
     contenidos_api = [
         types.Content(role=msg["role"], parts=[types.Part.from_text(text=msg["parts"])])
         for msg in MEMORIA_USUARIOS[usuario_id]
@@ -102,15 +97,17 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
         client = genai.Client(api_key=api_key)
         
         try:
+            # Intento normal con el modelo principal
             respuesta_texto = _invocar_gemini_api(client, MODELO_PRINCIPAL, contenidos_api)
         except APIError as e:
-            if "503" in str(e) or "demand" in str(e).lower():
-                print(f"Saturación detectada en {MODELO_PRINCIPAL}. Activando protocolos de respaldo...")
+            # CORRECCIÓN MAESTRA: Si da saturación (503) O si se agotó la cuota (429), salta al modelo B
+            error_str = str(e).lower()
+            if "503" in error_str or "429" in error_str or "exhausted" in error_str or "demand" in error_str:
+                print(f"Alerta de cuota/saturación en {MODELO_PRINCIPAL}. Activando modelo alternativo...")
                 respuesta_texto = _invocar_gemini_api(client, MODELO_RESPALDO, contenidos_api)
             else:
                 raise e
 
-        # Guardamos la respuesta limpia del modelo en el historial
         MEMORIA_USUARIOS[usuario_id].append({"role": "model", "parts": respuesta_texto})
         return respuesta_texto
 
@@ -140,7 +137,6 @@ async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE)
     mensaje_usuario = update.message.text
     usuario_id = str(update.effective_user.id)
     
-    # Simular que está escribiendo
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     
     try:
