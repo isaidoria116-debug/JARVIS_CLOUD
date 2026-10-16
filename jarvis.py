@@ -1,5 +1,6 @@
 import os
 import asyncio
+from contextlib import asynccontextmanager
 from collections import deque
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
@@ -10,8 +11,41 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# 1. INICIALIZAR LA APLICACIÓN PRIMERO (Esto evita el error de Render)
-app = FastAPI(title="JARVIS Cloud Core")
+# --- MANEJO DE ARRANQUE Y APAGADO SEGURO (Anti-Conflictos) ---
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # 1. Configurar credenciales directas desde el entorno seguro de Render
+    token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
+    
+    if not token_telegram:
+        print("ADVERTENCIA CRÍTICA: Variable TELEGRAM_TOKEN no configurada.")
+        yield
+        return
+
+    # 2. Inicializar la arquitectura del bot
+    tg_app = Application.builder().token(token_telegram).build()
+    tg_app.add_handler(CommandHandler("start", start))
+    tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_telegram))
+    
+    await tg_app.initialize()
+    await tg_app.start()
+    
+    # Iniciamos el sondeo guardando la tarea para poder cancelarla limpiamente
+    polling_task = asyncio.create_task(tg_app.updater.start_polling())
+    print("Sistemas J.A.R.V.I.S. conectados a los satélites de Telegram.")
+
+    # El servidor web se mantiene corriendo aquí...
+    yield
+
+    # 3. Protocolo de Apagado: Al reiniciar, liberamos el Token inmediatamente
+    print("Cerrando protocolos... Liberando acceso cuántico de Telegram.")
+    await tg_app.updater.stop()
+    await tg_app.stop()
+    await tg_app.shutdown()
+    polling_task.cancel()
+
+# Inicializar FastAPI inyectando el ciclo de vida seguro
+app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
 # --- CONFIGURACIÓN DE MODELOS ---
 MODELO_PRINCIPAL = "gemini-3.8-flash"
@@ -48,6 +82,7 @@ def _invocar_gemini_api(client, model_name, contenidos):
 
 # --- NÚCLEO LÓGICO DE INTELIGENCIA ---
 def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
+    # Lee la clave de Gemini que guardamos en la pestaña Environment de Render
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return "Error de energía: Falta la configuración de GEMINI_API_KEY en la nube, Señor."
@@ -80,7 +115,7 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
     except Exception as e:
         if MEMORIA_USUARIOS[usuario_id]:
             MEMORIA_USUARIOS[usuario_id].pop()
-        return f"Disculpe, Señor. Interferencia cuántica persistente en la nube: {str(e)}"
+        return f"Disculpe, Señor. Interferencia cuántica en la nube: {str(e)}"
 
 # --- ENDPOINTS DE LA PÁGINA WEB ---
 @app.get("/")
@@ -92,7 +127,7 @@ def procesar_comando(comando: Comando):
     respuesta = generar_respuesta_jarvis("web_user", comando.texto)
     return {"respuesta": respuesta}
 
-# --- INTEGRACIÓN ASÍNCRONA CON TELEGRAM ---
+# --- INTERFAZ ASÍNCRONA DE TELEGRAM ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usuario_id = str(update.effective_user.id)
     if usuario_id in MEMORIA_USUARIOS:
@@ -102,24 +137,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = update.message.text
     usuario_id = str(update.effective_user.id)
+    
+    # Simular escritura
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    
     respuesta_jarvis = generar_respuesta_jarvis(usuario_id, mensaje_usuario)
     await update.message.reply_text(respuesta_jarvis)
-
-@app.on_event("startup")
-async def iniciar_bot_telegram():
-    # --- TUS CREDENCIALES DIRECTAS ---
-    token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
-    os.environ["GEMINI_API_KEY"] = ""  # <--- REEMPLAZA ESTO CON TU CLAVE DE GOOGLE
-    
-    if not token_telegram:
-        print("ADVERTENCIA CRÍTICA: Variable TELEGRAM_TOKEN no configurada.")
-        return
-
-    tg_app = Application.builder().token(token_telegram).build()
-    tg_app.add_handler(CommandHandler("start", start))
-    tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_telegram))
-    
-    await tg_app.initialize()
-    await tg_app.start()
-    asyncio.create_task(tg_app.updater.start_polling())
