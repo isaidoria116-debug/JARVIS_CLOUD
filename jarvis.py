@@ -14,7 +14,7 @@ from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_excep
 # --- MANEJO DE ARRANQUE Y APAGADO SEGURO (Anti-Conflictos) ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # 1. Configurar credenciales directas desde el entorno seguro de Render
+    # Token directo de tu nuevo bot Jarvis_7.0
     token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
     
     if not token_telegram:
@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
         yield
         return
 
-    # 2. Inicializar la arquitectura del bot
+    # Inicializar la arquitectura del bot
     tg_app = Application.builder().token(token_telegram).build()
     tg_app.add_handler(CommandHandler("start", start))
     tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_telegram))
@@ -30,14 +30,13 @@ async def lifespan(app: FastAPI):
     await tg_app.initialize()
     await tg_app.start()
     
-    # Iniciamos el sondeo guardando la tarea para poder cancelarla limpiamente
+    # Iniciamos el sondeo de mensajes
     polling_task = asyncio.create_task(tg_app.updater.start_polling())
     print("Sistemas J.A.R.V.I.S. conectados a los satélites de Telegram.")
 
-    # El servidor web se mantiene corriendo aquí...
     yield
 
-    # 3. Protocolo de Apagado: Al reiniciar, liberamos el Token inmediatamente
+    # Protocolo de Apagado para liberar el token inmediatamente al reiniciar
     print("Cerrando protocolos... Liberando acceso cuántico de Telegram.")
     await tg_app.updater.stop()
     await tg_app.stop()
@@ -82,7 +81,7 @@ def _invocar_gemini_api(client, model_name, contenidos):
 
 # --- NÚCLEO LÓGICO DE INTELIGENCIA ---
 def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
-    # Lee la clave de Gemini que guardamos en la pestaña Environment de Render
+    # Lee la clave de Gemini desde el entorno seguro de Render
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
         return "Error de energía: Falta la configuración de GEMINI_API_KEY en la nube, Señor."
@@ -90,8 +89,10 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
     if usuario_id not in MEMORIA_USUARIOS:
         MEMORIA_USUARIOS[usuario_id] = deque(maxlen=10)
     
-    MEMORIA_USUARIOS[usuario_id].append({"role": "user", "parts": [comando_texto]})
+    # Guardamos el texto puro del usuario (Corrección de Validación efectuada)
+    MEMORIA_USUARIOS[usuario_id].append({"role": "user", "parts": comando_texto})
     
+    # Estructura el historial correctamente en texto string para Google SDK
     contenidos_api = [
         types.Content(role=msg["role"], parts=[types.Part.from_text(text=msg["parts"])])
         for msg in MEMORIA_USUARIOS[usuario_id]
@@ -109,7 +110,8 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
             else:
                 raise e
 
-        MEMORIA_USUARIOS[usuario_id].append({"role": "model", "parts": [respuesta_texto]})
+        # Guardamos la respuesta limpia del modelo en el historial
+        MEMORIA_USUARIOS[usuario_id].append({"role": "model", "parts": respuesta_texto})
         return respuesta_texto
 
     except Exception as e:
@@ -138,20 +140,12 @@ async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE)
     mensaje_usuario = update.message.text
     usuario_id = str(update.effective_user.id)
     
-    # 1. Simular escritura en el chat para saber que el bot recibió el mensaje
+    # Simular que está escribiendo
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     
     try:
-        # 2. Intentar llamar al núcleo de la IA
         respuesta_jarvis = generar_respuesta_jarvis(usuario_id, mensaje_usuario)
         await update.message.reply_text(respuesta_jarvis)
     except Exception as error_critico:
-        # 3. Si algo se rompe por dentro, el bot te avisará directamente aquí en lugar de quedarse callado
         print(f"ERROR EN TELEGRAM CRÍTICO: {str(error_critico)}")
-        await update.message.reply_text(f"Disculpe, Señor. Mis sistemas centrales sufrieron un colapso eléctrico interno: {str(error_critico)}")
-
-    # Simular escritura
-    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
-    
-    respuesta_jarvis = generar_respuesta_jarvis(usuario_id, mensaje_usuario)
-    await update.message.reply_text(respuesta_jarvis)
+        await update.message.reply_text(f"Disculpe, Señor. Colapso eléctrico interno: {str(error_critico)}")
