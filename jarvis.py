@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
-# --- CONFIGURACIÓN DE MODELOS (ÚLTIMA VERSION DISPONIBLE) ---
-MODELO_PRINCIPAL = "gemini-4-argon"
-MODELO_RESPALDO = "gemini-3.8-flash"  
+# --- RECONFIGURACIÓN BASADA EN GEMINI 2.5 (ESTABLE Y VIGENTE) ---
+MODELO_PRINCIPAL = "gemini-2.5-flash"
+MODELO_RESPALDO = "gemini-2.5-pro"  
 
 JARVIS_PROMPT = """
 Eres J.A.R.V.I.S., el asistente de inteligencia artificial personal creado por Tony Stark.
@@ -58,8 +58,8 @@ class Comando(BaseModel):
     texto: str
 
 @retry(
-    stop=stop_after_attempt(3),
-    wait=wait_exponential(multiplier=1, min=2, max=6),
+    stop=stop_after_attempt(2),
+    wait=wait_exponential(multiplier=1, min=1, max=3),
     retry=retry_if_exception_type(APIError),
     reraise=True
 )
@@ -92,11 +92,12 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
         client = genai.Client(api_key=api_key)
         
         try:
+            # Intentar con el modelo principal estable
             respuesta_texto = _invocar_gemini_api(client, MODELO_PRINCIPAL, contenidos_api)
         except APIError as e:
             error_str = str(e).lower()
-            if "503" in error_str or "429" in error_str or "exhausted" in error_str or "demand" in error_str or "404" in error_str:
-                print(f"Activando modelo alternativo {MODELO_RESPALDO}...")
+            if "503" in error_str or "429" in error_str or "exhausted" in error_str or "404" in error_str:
+                print(f"Activando modelo de respaldo avanzado: {MODELO_RESPALDO}...")
                 respuesta_texto = _invocar_gemini_api(client, MODELO_RESPALDO, contenidos_api)
             else:
                 raise e
