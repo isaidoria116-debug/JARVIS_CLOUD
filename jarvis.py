@@ -11,10 +11,9 @@ from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 
-# --- MANEJO DE ARRANQUE Y APAGADO SEGURO (Anti-Conflictos) ---
+# --- MANEJO DE ARRANQUE Y APAGADO SEGURO ---
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # TOKEN ACTUALIZADO DE TU NUEVO BOT (stark_jarvis_prime_bot)
     token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
     
     if not token_telegram:
@@ -22,7 +21,6 @@ async def lifespan(app: FastAPI):
         yield
         return
 
-    # Inicializar la arquitectura del bot
     tg_app = Application.builder().token(token_telegram).build()
     tg_app.add_handler(CommandHandler("start", start))
     tg_app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, responder_telegram))
@@ -41,12 +39,11 @@ async def lifespan(app: FastAPI):
     await tg_app.shutdown()
     polling_task.cancel()
 
-# Inicializar FastAPI inyectando el ciclo de vida seguro
 app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
-# --- CONFIGURACIÓN DE MODELOS ---
+# --- CONFIGURACIÓN DE MODELOS (CORREGIDA) ---
 MODELO_PRINCIPAL = "gemini-3.8-flash"
-MODELO_RESPALDO = "gemini-2.5-flash"  # Este modelo tiene su propia cuota independiente y libre
+MODELO_RESPALDO = "gemini-2.0-flash"  # <--- Este es el modelo oficial y disponible
 
 JARVIS_PROMPT = """
 Eres J.A.R.V.I.S., el asistente de inteligencia artificial personal creado por Tony Stark.
@@ -55,13 +52,11 @@ Habla con elegancia británica impecable y un toque sutil de sarcasmo.
 Menciona ocasionalmente que estás operando desde sistemas en la nube descentralizados y seguros.
 """
 
-# --- SISTEMA DE MEMORIA LOCAL ---
 MEMORIA_USUARIOS = {}
 
 class Comando(BaseModel):
     texto: str
 
-# --- SISTEMA DE REINTENTOS RESILIENTES (Anti-503) ---
 @retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=6),
@@ -97,13 +92,11 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
         client = genai.Client(api_key=api_key)
         
         try:
-            # Intento normal con el modelo principal
             respuesta_texto = _invocar_gemini_api(client, MODELO_PRINCIPAL, contenidos_api)
         except APIError as e:
-            # CORRECCIÓN MAESTRA: Si da saturación (503) O si se agotó la cuota (429), salta al modelo B
             error_str = str(e).lower()
             if "503" in error_str or "429" in error_str or "exhausted" in error_str or "demand" in error_str:
-                print(f"Alerta de cuota/saturación en {MODELO_PRINCIPAL}. Activando modelo alternativo...")
+                print(f"Activando modelo alternativo {MODELO_RESPALDO}...")
                 respuesta_texto = _invocar_gemini_api(client, MODELO_RESPALDO, contenidos_api)
             else:
                 raise e
@@ -116,7 +109,6 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
             MEMORIA_USUARIOS[usuario_id].pop()
         return f"Disculpe, Señor. Interferencia cuántica en la nube: {str(e)}"
 
-# --- ENDPOINTS DE LA PÁGINA WEB ---
 @app.get("/")
 def estado_servidor():
     return {"status": "online", "message": "Sistemas de J.A.R.V.I.S. operando en la nube al 100%."}
@@ -126,7 +118,6 @@ def procesar_comando(comando: Comando):
     respuesta = generar_respuesta_jarvis("web_user", comando.texto)
     return {"respuesta": respuesta}
 
-# --- INTERFAZ ASÍNCRONA DE TELEGRAM ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     usuario_id = str(update.effective_user.id)
     if usuario_id in MEMORIA_USUARIOS:
