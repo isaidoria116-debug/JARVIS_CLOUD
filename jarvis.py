@@ -41,9 +41,9 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
-# --- RECONFIGURACIÓN BASADA EN GEMINI 2.5 (ESTABLE Y VIGENTE) ---
-MODELO_PRINCIPAL = "gemini-2.5-flash"
-MODELO_RESPALDO = "gemini-2.5-pro"  
+# --- RECONFIGURACIÓN CON MODELOS RECOMENDADOS Y VIGENTES ---
+MODELO_PRINCIPAL = "gemini-3.5-flash"
+MODELO_RESPALDO = "gemini-3.1-pro-preview"  
 
 JARVIS_PROMPT = """
 Eres J.A.R.V.I.S., el asistente de inteligencia artificial personal creado por Tony Stark.
@@ -92,12 +92,12 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
         client = genai.Client(api_key=api_key)
         
         try:
-            # Intentar con el modelo principal estable
+            # Intentar con el modelo estable de nueva generación
             respuesta_texto = _invocar_gemini_api(client, MODELO_PRINCIPAL, contenidos_api)
         except APIError as e:
             error_str = str(e).lower()
             if "503" in error_str or "429" in error_str or "exhausted" in error_str or "404" in error_str:
-                print(f"Activando modelo de respaldo avanzado: {MODELO_RESPALDO}...")
+                print(f"Activando protocolo alternativo de respaldo: {MODELO_RESPALDO}...")
                 respuesta_texto = _invocar_gemini_api(client, MODELO_RESPALDO, contenidos_api)
             else:
                 raise e
