@@ -138,6 +138,18 @@ async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE)
     mensaje_usuario = update.message.text
     usuario_id = str(update.effective_user.id)
     
+    # 1. Simular escritura en el chat para saber que el bot recibió el mensaje
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+    
+    try:
+        # 2. Intentar llamar al núcleo de la IA
+        respuesta_jarvis = generar_respuesta_jarvis(usuario_id, mensaje_usuario)
+        await update.message.reply_text(respuesta_jarvis)
+    except Exception as error_critico:
+        # 3. Si algo se rompe por dentro, el bot te avisará directamente aquí en lugar de quedarse callado
+        print(f"ERROR EN TELEGRAM CRÍTICO: {str(error_critico)}")
+        await update.message.reply_text(f"Disculpe, Señor. Mis sistemas centrales sufrieron un colapso eléctrico interno: {str(error_critico)}")
+
     # Simular escritura
     await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
     
