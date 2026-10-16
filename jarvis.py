@@ -42,8 +42,9 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="JARVIS Cloud Core", lifespan=lifespan)
 
 # --- CONFIGURACIÓN DE MODELOS (CORREGIDA) ---
-MODELO_PRINCIPAL = "gemini-3.8-flash"
-MODELO_RESPALDO = "gemini-2.0-flash"  # <--- Este es el modelo oficial y disponible
+# Se actualizan a los identificadores de modelos vigentes y estables
+MODELO_PRINCIPAL = "gemini-2.5-flash"
+MODELO_RESPALDO = "gemini-2.5-pro"  
 
 JARVIS_PROMPT = """
 Eres J.A.R.V.I.S., el asistente de inteligencia artificial personal creado por Tony Stark.
@@ -95,6 +96,7 @@ def generar_respuesta_jarvis(usuario_id: str, comando_texto: str) -> str:
             respuesta_texto = _invocar_gemini_api(client, MODELO_PRINCIPAL, contenidos_api)
         except APIError as e:
             error_str = str(e).lower()
+            # Si el error indica saturación o cuota excedida, pasa al modelo de respaldo
             if "503" in error_str or "429" in error_str or "exhausted" in error_str or "demand" in error_str:
                 print(f"Activando modelo alternativo {MODELO_RESPALDO}...")
                 respuesta_texto = _invocar_gemini_api(client, MODELO_RESPALDO, contenidos_api)
