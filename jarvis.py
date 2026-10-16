@@ -109,7 +109,7 @@ async def responder_telegram(update: Update, context: ContextTypes.DEFAULT_TYPE)
 @app.on_event("startup")
 async def iniciar_bot_telegram():
     # --- TUS CREDENCIALES DIRECTAS ---
-    token_telegram = "8837254965:AAEMzgOybDw7nV_O9otKjloEoOO-mnTI5-g"
+    token_telegram = "8845322417:AAGvR1M-Ao1C06a5heaLV112lPMZg5G2j9M"
     os.environ["GEMINI_API_KEY"] = "TU_API_KEY_DE_GEMINI_AQUÍ"  # <--- REEMPLAZA ESTO CON TU CLAVE DE GOOGLE
     
     if not token_telegram:
